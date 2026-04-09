@@ -3,8 +3,9 @@
 ### 문서 목록
 
 <!-- DOC_LIST_START -->
-- [cli-lib-guide.md](./cli-lib-guide.md): C# CLI 프로그램 개발을 위한 추천 라이브러리
+- [cocona-guide.md](./cocona-guide.md): Cocona 라이브러리 가이드
 - [csharp-convention.md](./csharp-convention.md): C# 코딩 컨벤션 가이드
+- [devcontainer-guide.md](./devcontainer-guide.md): Devcontainer 변경 후 Codespaces 적용 방법 가이드
 - [docker-guide.md](./docker-guide.md): Docker 설치 및 구동 가이드
 - [dotnet-guide.md](./dotnet-guide.md): C# 개발을 위한 .NET 설치 및 프로젝트 구성 가이드
 - [git-guide.md](./git-guide.md): git 기초

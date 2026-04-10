@@ -29,7 +29,7 @@ app.AddCommand(async (
 
     Console.WriteLine();
     Console.WriteLine("아이디, 문서이슈, 버그/기능이슈, 오타PR, 문서PR, 버그/기능PR, 총점");
-
+    // 메서드 파라미터 순서: (기능/버그PR, 문서PR, 오타PR, 기능/버그이슈, 문서이슈)
     int user1Score = ScoreCalculator.CalculateFinalScore(1, 3, 1, 2, 1);
     Console.WriteLine($"user1, 1, 2, 1, 3, 1, {user1Score}");
 

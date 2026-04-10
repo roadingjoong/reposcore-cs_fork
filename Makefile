@@ -1,13 +1,12 @@
-.PHONY: docs docs-check
+.PHONY: docs
 
 PYTHON      := python3
-DOCS_SCRIPT := docs/update-docs-readme.py
+DOCS_SCRIPT := docs/update_docs_readme.py
+DOCS_FILES  := $(wildcard docs/*.md)
 
-## 기본 진입점: 변경이 있을 때만 README 갱신
-docs:
+## docs/*.md가 README.md보다 새로우면 스크립트 실행, 아니면 스킵
+docs/README.md: $(DOCS_FILES)
 	$(PYTHON) $(DOCS_SCRIPT)
 
-## 변경 여부만 확인 (갱신하지 않음)
-## 변경 있음 → exit 1 / 변경 없음 → exit 0
-docs-check:
-	$(PYTHON) $(DOCS_SCRIPT) --check
+## 진입점
+docs: docs/README.md

@@ -102,6 +102,8 @@ namespace RepoScore.Services
 
             Console.WriteLine("📌 최근 이슈 선점 현황\n");
 
+            var claimMap = new Dictionary<string, List<string>>();
+
             foreach (var issue in issues)
             {
                 foreach (var comment in issue.Comments)
@@ -112,12 +114,20 @@ namespace RepoScore.Services
                     if (s_claimKeywords.Any(k =>
                         comment.Body?.Contains(k, StringComparison.OrdinalIgnoreCase) == true))
                     {
-                        Console.WriteLine($"👤 {comment.Login}");
-                        Console.WriteLine($" - {issue.Url}");
-                        Console.WriteLine();
+                        if (!claimMap.ContainsKey(comment.Login))
+                            claimMap[comment.Login] = new List<string>();
+                        claimMap[comment.Login].Add(issue.Url);
                         break;
                     }
                 }
+            }
+
+            foreach (var (login, urls) in claimMap)
+            {
+                Console.WriteLine($"👤 {login}");
+                foreach (var url in urls)
+                    Console.WriteLine($" - {url}");
+                Console.WriteLine();
             }
         }
     }

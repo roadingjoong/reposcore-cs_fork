@@ -49,7 +49,7 @@ namespace RepoScore.Services
         }
 
         // PR 개수
-        public Task<int> GetPullRequestCountAsync(string authorLogin)
+        public int GetPullRequestCount(string authorLogin)
         {
             var query =
                 new Query()
@@ -59,11 +59,11 @@ namespace RepoScore.Services
                     first: 1)
                 .Select(x => x.IssueCount);
 
-            return _connection.Run(query);
+            return _connection.Run(query).Result;
         }
 
         // Issue 개수
-        public Task<int> GetIssueCountAsync(string authorLogin)
+        public int GetIssueCount(string authorLogin)
         {
             var query =
                 new Query()
@@ -73,11 +73,11 @@ namespace RepoScore.Services
                     first: 1)
                 .Select(x => x.IssueCount);
 
-            return _connection.Run(query);
+            return _connection.Run(query).Result;
         }
 
         // PR 댓글
-        public async Task<List<string>> GetPullRequestCommentsAsync(int prNumber)
+        public List<string> GetPullRequestComments(int prNumber)
         {
             var query =
                 new Query()
@@ -87,13 +87,14 @@ namespace RepoScore.Services
                 .Nodes
                 .Select(c => c.Body);
 
-            var result = await _connection.Run(query);
+            // 동기 실행
+            var result = _connection.Run(query).Result;
 
             return new List<string>(result);
         }
 
         // 이슈 번호로 연결된 오픈 PR 존재 여부 확인
-        private async Task<bool> HasLinkedPullRequestAsync(int issueNumber)
+        private bool HasLinkedPullRequest(int issueNumber)
         {
             // GitHub REST API: 이슈에 연결된 타임라인 이벤트에서 cross-referenced PR 확인
             // 또는 Search API로 해당 이슈를 닫는 PR 조회
@@ -108,7 +109,8 @@ namespace RepoScore.Services
             HttpResponseMessage response;
             try
             {
-                response = await s_httpClient.SendAsync(request);
+                // 동기 HTTP 요청
+                response = s_httpClient.Send(request);
             }
             catch
             {
@@ -118,7 +120,11 @@ namespace RepoScore.Services
             if (!response.IsSuccessStatusCode)
                 return false;
 
-            var body = await response.Content.ReadAsStringAsync();
+            // 동기 문자열 읽기 - Stream 사용
+            using var stream = response.Content.ReadAsStream();
+            using var reader = new StreamReader(stream);
+            var body = reader.ReadToEnd();
+
             JsonDocument document;
             try
             {
@@ -172,8 +178,8 @@ namespace RepoScore.Services
             return $"⏳ 남은 시간: {(int)remaining.TotalHours:D2}:{remaining.Minutes:D2}:{remaining.Seconds:D2}";
         }
 
-        // 최근 이슈 선점 현황 조회
-        public async Task ShowRecentClaimsAsync()
+        // 최근 이슈 선점 현황 조회 (동기 버전)
+        public void ShowRecentClaims()
         {
             const string graphQL = @"
                 query($owner: String!, $name: String!) {
@@ -219,7 +225,7 @@ namespace RepoScore.Services
             HttpResponseMessage response;
             try
             {
-                response = await s_httpClient.SendAsync(request);
+                response = s_httpClient.Send(request);
             }
             catch (Exception ex)
             {
@@ -229,8 +235,12 @@ namespace RepoScore.Services
 
             if (!response.IsSuccessStatusCode)
             {
-                var errorText = await response.Content.ReadAsStringAsync();
+                using var errorStream = response.Content.ReadAsStream();
+                using var errorReader = new StreamReader(errorStream);
+                var errorText = errorReader.ReadToEnd();
+                
                 Console.WriteLine($"GitHub API 요청 실패: HTTP {(int)response.StatusCode} {response.ReasonPhrase}");
+                
                 if (!string.IsNullOrWhiteSpace(errorText))
                 {
                     Console.WriteLine("응답 본문:");
@@ -239,7 +249,10 @@ namespace RepoScore.Services
                 return;
             }
 
-            var body = await response.Content.ReadAsStringAsync();
+            using var stream = response.Content.ReadAsStream();
+            using var reader = new StreamReader(stream);
+            var body = reader.ReadToEnd();
+
             JsonDocument document;
             try
             {
@@ -358,7 +371,7 @@ namespace RepoScore.Services
                         var remaining = deadline - now;
 
                         // PR 연결 여부 확인
-                        bool hasPr = issueNumber > 0 && await HasLinkedPullRequestAsync(issueNumber);
+                        bool hasPr = issueNumber > 0 && HasLinkedPullRequest(issueNumber);
 
                         // 출력
                         Console.WriteLine($"👤 {login}");

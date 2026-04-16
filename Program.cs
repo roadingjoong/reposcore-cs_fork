@@ -23,7 +23,9 @@ app.AddCommand((
 
         var parts = repo.Split('/');
         var service = new GitHubService(parts[0], parts[1], token);
-        return service.ShowRecentClaimsAsync();
+        // 동기 메소드 호출로 변경
+        service.ShowRecentClaims();
+        return Task.CompletedTask;
     }
 
     Console.WriteLine($"저장소: {repo}");

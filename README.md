@@ -69,7 +69,7 @@ python tools/update-synopsis.py
 make synopsis
 
 # docs와 함께 업데이트
-make docs
+make
 ```
 
 > ⚠️ `README.md`의 Synopsis 섹션은 수동으로 수정하지 마세요. 프로그램 옵션, 인수, 또는 도움말 출력이 변경된 경우 반드시 위 명령어를 실행하여 Synopsis를 자동 갱신해야 합니다.

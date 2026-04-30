@@ -11,10 +11,10 @@ CoconaApp.Run((
 [Argument(Description = "대상 저장소 목록 (예: owner/repo1 owner/repo2)")] string[] repos,
 [Option('t', Description = "GitHub Token (미입력시 GITHUB_TOKEN 사용)")] string? token = null,
 [Option(Description = "최근 이슈 선점 현황 조회 (issue|user)")] string? claims = null,
-[Option('f', Description = "출력 형식 (csv, txt)")] string? format,
-[Option('o', Description = "출력 디렉토리 경로")] string? output,
-[Option(Description = "정렬 기준 (score | id)")] string? sortBy,
-[Option(Description = "정렬 방법 (asc | desc)")] string? sortOrder,
+[Option('f', Description = "출력 형식 (csv, txt)")] string? format = null,
+[Option('o', Description = "출력 디렉토리 경로")] string? output = null,
+[Option(Description = "정렬 기준 (score | id)")] string? sortBy = null,
+[Option(Description = "정렬 방법 (asc | desc)")] string? sortOrder= null,
 [Option(Description = "이슈 선점 키워드 (쉼표 구분, 미입력시 기본값 사용)")] string? keywords = null,
 [Option(Description = "캐시를 무시하고 전체 데이터를 다시 수집할지 여부")] bool noCache = false
 ) =>

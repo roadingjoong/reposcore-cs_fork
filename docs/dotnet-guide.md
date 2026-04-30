@@ -372,7 +372,7 @@ dotnet test RepoScore.Tests/RepoScore.Tests.csproj
 
 ---
 
-### 7.7 정리
+### 7.6 정리
 
 기본 흐름은 다음과 같습니다.
 

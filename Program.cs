@@ -67,10 +67,23 @@ CoconaApp.Run((
             Console.Error.WriteLine($"{repo} 기여자 데이터 수집 및 분석 중...");
 
             if (!Directory.Exists(repoOutput)) Directory.CreateDirectory(repoOutput);
-            string cachePath = Path.Combine(repoOutput, "cache.json");
+            string cachePath = Path.Combine(output, "cache.json");
             var cache = CacheManager.LoadCache(cachePath, repo);
 
-            DateTimeOffset? since = cache.LastAnalyzedAt > DateTimeOffset.MinValue ? cache.LastAnalyzedAt : null;
+            if (!CacheManager.HasSameKeywords(cache, parsedKeywords))
+            {
+                Console.Error.WriteLine("키워드 옵션이 이전 실행과 달라 캐시를 무효화합니다.");
+
+                cache = new RepoCache
+                {
+                    Repository = repo,
+                    Keywords = parsedKeywords
+                };
+            }
+
+            DateTimeOffset? since = cache.LastAnalyzedAt == DateTimeOffset.MinValue
+                ? null
+                : cache.LastAnalyzedAt;
 
             if (since.HasValue)
             {
@@ -128,7 +141,7 @@ CoconaApp.Run((
                 reportData.Add((user, docIssues.Count, featureBugIssues.Count, typoPrs.Count, docPrs.Count, featureBugPrs.Count, finalScore));
             }
 
-            CacheManager.SaveCache(cachePath, cache);
+            CacheManager.SaveCache(cachePath, cache, parsedKeywords);
             Console.Error.WriteLine($"캐시 갱신 및 저장 완료: {cachePath}");
 
             reportData = SortReportData(reportData, sortBy, sortOrder);

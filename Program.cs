@@ -6,16 +6,18 @@ using System.Text;
 using Cocona;
 using RepoScore.Data;
 using RepoScore.Services;
+using Spectre.Console; // 라이브러리 추가
 
 CoconaApp.Run((
-    [Option('t', Description = "GitHub Token (미입력시 GITHUB_TOKEN 사용)")] string? token,
-    [Option(Description = "최근 이슈 선점 현황 조회 (issue|user)")] string? claims,
-    [Option('f', Description = "출력 형식 (csv, txt)")] string? format,
-    [Option('o', Description = "출력 디렉토리 경로")] string? output,
-    [Option(Description = "정렬 기준 (score | id)")] string? sortBy,
-    [Option(Description = "정렬 방법 (asc | desc)")] string? sortOrder,
-    [Option(Description = "이슈 선점 키워드 (쉼표 구분, 미입력시 기본값 사용)")] string? keywords,
-    [Argument(Description = "대상 저장소 목록 (예: owner/repo1 owner/repo2)")] string[] repos
+[Argument(Description = "대상 저장소 목록 (예: owner/repo1 owner/repo2)")] string[] repos,
+[Option('t', Description = "GitHub Token (미입력시 GITHUB_TOKEN 사용)")] string? token = null,
+[Option(Description = "최근 이슈 선점 현황 조회 (issue|user)")] string? claims = null,
+[Option('f', Description = "출력 형식 (csv, txt)")] string? format = null,
+[Option('o', Description = "출력 디렉토리 경로")] string? output = null,
+[Option(Description = "정렬 기준 (score | id)")] string? sortBy = null,
+[Option(Description = "정렬 방법 (asc | desc)")] string? sortOrder= null,
+[Option(Description = "이슈 선점 키워드 (쉼표 구분, 미입력시 기본값 사용)")] string? keywords = null,
+[Option(Description = "캐시를 무시하고 전체 데이터를 다시 수집할지 여부")] bool noCache = false
 ) =>
 {
     token ??= Environment.GetEnvironmentVariable("GITHUB_TOKEN");
@@ -45,9 +47,12 @@ CoconaApp.Run((
         string ownerName = parts[0];
         string repoName = parts[1];
 
-        string repoOutput = repos.Length > 1
-            ? Path.Combine(output, $"{ownerName}_{repoName}")
-            : output;
+string repoOutput = repos.Length > 1 
+    ? Path.Combine(output, $"{ownerName}_{repoName}") 
+    : output;
+if (!Directory.Exists(repoOutput)) Directory.CreateDirectory(repoOutput);
+string cachePath = Path.Combine(repoOutput, "cache.json");
+var cache = CacheManager.LoadCache(cachePath, repo, noCache);
 
         var service = new GitHubService(ownerName, repoName, token, parsedKeywords);
 
@@ -55,7 +60,7 @@ CoconaApp.Run((
         {
             if (claims != null)
             {
-                Console.Error.WriteLine($"[{ownerName}/{repoName}] 최근 이슈 선점 현황을 조회합니다...\n");
+                AnsiConsole.MarkupLine($"[[[blue]{ownerName}/{repoName}[/]]] 최근 이슈 선점 현황을 조회합니다...\n");
                 var mode = string.IsNullOrEmpty(claims) ? "issue" : claims;
 
                 var claimsData = service.GetRecentClaimsData();
@@ -64,11 +69,13 @@ CoconaApp.Run((
                 continue;
             }
 
-            Console.Error.WriteLine($"{repo} 기여자 데이터 수집 및 분석 중...");
-
+            
+            AnsiConsole.MarkupLine($"[yellow]{repo}[/] 기여자 데이터 수집 및 분석 중...");
+          
             if (!Directory.Exists(repoOutput)) Directory.CreateDirectory(repoOutput);
             string cachePath = Path.Combine(output, "cache.json");
             var cache = CacheManager.LoadCache(cachePath, repo);
+          
 
             if (!CacheManager.HasSameKeywords(cache, parsedKeywords))
             {
@@ -121,13 +128,9 @@ CoconaApp.Run((
                     else cache.UserPullRequests[user].Add(npr);
                 }
 
-                var userClaimsToCalc = cache.UserClaims[user]
-                    .Where(c => c.ClosedReason != IssueClosedStateReason.NotPlanned && c.ClosedReason != IssueClosedStateReason.Duplicate)
-                    .ToList();
+                var userClaimsToCalc = cache.UserClaims[user];
 
-                var prsToCalc = cache.UserPullRequests[user]
-                    .Where(p => p.IsMerged)
-                    .ToList();
+                var prsToCalc = cache.UserPullRequests[user];
 
                 var featureBugPrs = prsToCalc.Where(p => p.Labels.Contains(GitHubIssuePrLabel.Bug) || p.Labels.Contains(GitHubIssuePrLabel.Enhancement)).ToList();
                 var docPrs = prsToCalc.Where(p => p.Labels.Contains(GitHubIssuePrLabel.Documentation)).ToList();
@@ -155,7 +158,7 @@ CoconaApp.Run((
             File.WriteAllText(csvPath, csv.ToString(), Encoding.UTF8);
             Console.Error.WriteLine($"기본 데이터(CSV) 저장 완료: {csvPath}");
 
-            // txt 파일 생성
+            // TXT 리포트 생성 및 화면 출력
             if (format.ToLower() == "txt")
             {
                 string txtPath = Path.Combine(repoOutput, "results.txt");
@@ -163,11 +166,14 @@ CoconaApp.Run((
 
                 File.WriteAllText(txtPath, txtContent, Encoding.UTF8);
                 Console.Error.WriteLine($"가독성 리포트(TXT) 추가 저장 완료: {txtPath}");
+
+                // 화면에도 Spectre.Console을 사용하여 예쁘게 출력
+                PrintSpectreTable(repo, reportData);
             }
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"데이터 처리 중 오류 발생: {ex.Message}");
+            AnsiConsole.WriteException(ex);
         }
     }
 });
@@ -192,51 +198,56 @@ SortReportData(List<(string Id, int docIssues, int featBugIssues, int typoPrs, i
     return sorted;
 }
 
+// Spectre.Console을 사용하여 터미널에 직접 출력하는 함수
+static void PrintSpectreTable(string repo, List<(string Id, int docIssues, int featBugIssues, int typoPrs, int docPrs, int featBugPrs, int Score)> reportData)
+{
+    var table = new Table();
+    table.Title($"[bold blue]=== {repo} 기여도 리포트 ===[/]");
+    table.Border(TableBorder.Rounded);
+
+    table.AddColumn(new TableColumn("[yellow]유저[/]").Centered());
+    table.AddColumn(new TableColumn("[yellow]이슈/PR[/]").Centered());
+    table.AddColumn(new TableColumn("[yellow]점수[/]").Centered());
+
+    foreach (var r in reportData)
+    {
+        table.AddRow(
+            r.Id,
+            $"{r.docIssues + r.featBugIssues}/{r.typoPrs + r.docPrs + r.featBugPrs}",
+            $"[green]{r.Score}[/]"
+        );
+    }
+
+    AnsiConsole.Write(table);
+}
+
 static string BuildTextReport(
     string repo,
     List<(string Id, int docIssues, int featBugIssues, int typoPrs, int docPrs, int featBugPrs, int Score)> reportData)
 {
-    var rows = reportData.Select(r => new
+    var console = AnsiConsole.Create(new AnsiConsoleSettings
     {
-        Id = r.Id,
-        IssuePr = $"{r.docIssues + r.featBugIssues}/{r.typoPrs + r.docPrs + r.featBugPrs}",
-        Score = r.Score.ToString()
-    }).ToList();
+        Ansi = AnsiSupport.No,
+        Interactive = InteractionSupport.No
+    });
 
-    string userHeader = "유저";
-    string issuePrHeader = "이슈/PR";
-    string scoreHeader = "점수";
+    var recorder = new Recorder(console);
 
-    int userWidth = Math.Max(userHeader.Length, rows.Any() ? rows.Max(x => x.Id.Length) : 0);
-    int issuePrWidth = Math.Max(issuePrHeader.Length, rows.Any() ? rows.Max(x => x.IssuePr.Length) : 0);
-    int scoreWidth = Math.Max(scoreHeader.Length, rows.Any() ? rows.Max(x => x.Score.Length) : 0);
+    var table = new Table();
+    table.Title($"=== {repo} 오픈소스 기여도 분석 리포트 ===");
+    table.Caption($"분석 일시: {DateTime.Now:yyyy-MM-dd HH:mm}");
 
-    string separator =
-        new string('-', userWidth) + "-+-" +
-        new string('-', issuePrWidth) + "-+-" +
-        new string('-', scoreWidth);
+    table.AddColumn("유저");
+    table.AddColumn("이슈/PR");
+    table.AddColumn("점수");
 
-    var sb = new StringBuilder();
-    sb.AppendLine($"=== {repo} 오픈소스 기여도 분석 리포트 ===");
-    sb.AppendLine($"분석 일시: {DateTime.Now:yyyy-MM-dd HH:mm}");
-    sb.AppendLine();
-
-    sb.AppendLine(
-        PadRightKorean(userHeader, userWidth) + " | " +
-        issuePrHeader.PadLeft(issuePrWidth) + " | " +
-        scoreHeader.PadLeft(scoreWidth));
-
-    sb.AppendLine(separator);
-
-    foreach (var row in rows)
+    foreach (var r in reportData)
     {
-        sb.AppendLine(
-            PadRightKorean(row.Id, userWidth) + " | " +
-            row.IssuePr.PadLeft(issuePrWidth) + " | " +
-            row.Score.PadLeft(scoreWidth));
+        table.AddRow(r.Id, $"{r.docIssues + r.featBugIssues}/{r.typoPrs + r.docPrs + r.featBugPrs}", r.Score.ToString());
     }
 
-    return sb.ToString();
+    recorder.Write(table);
+    return recorder.ExportText();
 }
 
 static string BuildClaimsReport(ClaimsData data, string mode)
@@ -245,35 +256,27 @@ static string BuildClaimsReport(ClaimsData data, string mode)
 
     if (data.ClaimedMap.Count == 0 && data.UnclaimedUrls.Count == 0)
     {
-        sb.AppendLine("최근 48시간 내 선점된 이슈가 없습니다.");
-        return sb.ToString();
+        return "최근 48시간 내 선점된 이슈가 없습니다.\n";
     }
 
     if (mode == "user")
     {
-        // user 모드: 유저별로 선점 이슈를 그룹화하여 출력
         if (data.UnclaimedUrls.Count > 0)
         {
-            sb.AppendLine("미선점 이슈");
-            foreach (var url in data.UnclaimedUrls)
-            {
-                sb.AppendLine($" - {url}");
-            }
+            sb.AppendLine("[yellow]미선점 이슈[/]");
+            foreach (var url in data.UnclaimedUrls) sb.AppendLine($" - {url}");
         }
 
         if (data.ClaimedMap.Count > 0)
         {
-            sb.AppendLine("\n선점된 이슈");
+            sb.AppendLine("\n[green]선점된 이슈[/]");
             foreach (var (login, claims) in data.ClaimedMap)
             {
-                sb.AppendLine($"{login}");
+                sb.AppendLine($"[bold]{login}[/]");
                 foreach (var claim in claims)
                 {
                     sb.AppendLine($" - {claim.Url}");
-                    if (claim.Labels.Count > 0)
-                    {
-                        sb.AppendLine($"   라벨: {string.Join(", ", claim.Labels)}");
-                    }
+                    if (claim.Labels.Count > 0) sb.AppendLine($"   라벨: {string.Join(", ", claim.Labels)}");
                     sb.AppendLine(claim.HasPr ? "   PR 생성됨" : FormatRemainingTime(claim.Remaining));
                 }
             }
@@ -281,70 +284,33 @@ static string BuildClaimsReport(ClaimsData data, string mode)
     }
     else
     {
-        // issue 모드: 이슈별로 선점자를 표시
-        // ClaimedMap(유저→이슈)을 이슈 기준으로 재구성
-        var claimedIssues = new List<(string Login, ClaimRecord Claim)>();
-        foreach (var (login, claims) in data.ClaimedMap)
-        {
-            foreach (var claim in claims)
-            {
-                claimedIssues.Add((login, claim));
-            }
-        }
-
-        // 이슈 번호 기준 정렬
-        claimedIssues = claimedIssues.OrderBy(x => x.Claim.Number).ToList();
+        var claimedIssues = data.ClaimedMap.SelectMany(kv => kv.Value.Select(c => (Login: kv.Key, Claim: c)))
+                                          .OrderBy(x => x.Claim.Number).ToList();
 
         if (claimedIssues.Count > 0)
         {
-            sb.AppendLine("선점된 이슈");
+            sb.AppendLine("[green]선점된 이슈[/]");
             foreach (var (login, claim) in claimedIssues)
             {
                 sb.AppendLine($" #{claim.Number} {claim.Url}");
                 sb.AppendLine($"   선점자: {login}");
-                if (claim.Labels.Count > 0)
-                {
-                    sb.AppendLine($"   라벨: {string.Join(", ", claim.Labels)}");
-                }
+                if (claim.Labels.Count > 0) sb.AppendLine($"   라벨: {string.Join(", ", claim.Labels)}");
                 sb.AppendLine(claim.HasPr ? "   PR 생성됨" : FormatRemainingTime(claim.Remaining));
             }
         }
 
         if (data.UnclaimedUrls.Count > 0)
         {
-            sb.AppendLine("\n미선점 이슈");
-            foreach (var url in data.UnclaimedUrls)
-            {
-                sb.AppendLine($" - {url}");
-            }
+            sb.AppendLine("\n[yellow]미선점 이슈[/]");
+            foreach (var url in data.UnclaimedUrls) sb.AppendLine($" - {url}");
         }
     }
 
     return sb.ToString();
 }
 
-static string PadRightKorean(string text, int width)
-{
-    int textWidth = GetDisplayWidth(text);
-    if (textWidth >= width) return text;
-
-    return text + new string(' ', width - textWidth);
-}
-
-static int GetDisplayWidth(string text)
-{
-    int width = 0;
-
-    foreach (char c in text)
-    {
-        width += c > 127 ? 2 : 1;
-    }
-
-    return width;
-}
-
 static string FormatRemainingTime(TimeSpan remaining)
 {
-    if (remaining <= TimeSpan.Zero) return "    기한 초과";
+    if (remaining <= TimeSpan.Zero) return "   기한 초과";
     return $"   남은 시간: {(int)remaining.TotalHours:D2}:{remaining.Minutes:D2}:{remaining.Seconds:D2}";
 }

@@ -47,8 +47,8 @@ CoconaApp.Run((
         string ownerName = parts[0];
         string repoName = parts[1];
 
-string repoOutput = repos.Length > 1 
-    ? Path.Combine(output, $"{ownerName}_{repoName}") 
+string repoOutput = repos.Length > 1
+    ? Path.Combine(output, $"{ownerName}_{repoName}")
     : output;
 if (!Directory.Exists(repoOutput)) Directory.CreateDirectory(repoOutput);
 string cachePath = Path.Combine(repoOutput, "cache.json");
@@ -69,14 +69,11 @@ var cache = CacheManager.LoadCache(cachePath, repo, noCache);
                 continue;
             }
 
-            
-            AnsiConsole.MarkupLine($"[yellow]{repo}[/] 기여자 데이터 수집 및 분석 중...");
-          
-            if (!Directory.Exists(repoOutput)) Directory.CreateDirectory(repoOutput);
-            string cachePath = Path.Combine(output, "cache.json");
-            var cache = CacheManager.LoadCache(cachePath, repo);
-          
 
+            AnsiConsole.MarkupLine($"[yellow]{repo}[/] 기여자 데이터 수집 및 분석 중...");
+
+            if (!Directory.Exists(repoOutput)) Directory.CreateDirectory(repoOutput);
+            
             if (!CacheManager.HasSameKeywords(cache, parsedKeywords))
             {
                 Console.Error.WriteLine("키워드 옵션이 이전 실행과 달라 캐시를 무효화합니다.");

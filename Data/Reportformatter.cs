@@ -59,26 +59,55 @@ namespace RepoScore.Data
         {
             var sb = new StringBuilder();
 
-            if (data.ClaimedMap.Count == 0)
+            if (data.ClaimedMap.Count == 0 && data.UnclaimedUrls.Count == 0)
             {
-                sb.AppendLine("최근 48시간 내 선점된 이슈가 없습니다.");
-                return sb.ToString();
+                return "최근 48시간 내 선점된 이슈가 없습니다.\n";
             }
 
-            sb.AppendLine("미선점 이슈");
-            foreach (var url in data.UnclaimedUrls)
-                sb.AppendLine($" - {url}");
-
-            sb.AppendLine("\n선점된 이슈");
-            foreach (var (login, claims) in data.ClaimedMap)
+            if (mode == "user")
             {
-                sb.AppendLine($"{login}");
-                foreach (var claim in claims)
+                if (data.UnclaimedUrls.Count > 0)
                 {
-                    sb.AppendLine($" - {claim.Url}");
-                    if (claim.Labels.Count > 0)
-                        sb.AppendLine($"    라벨: {string.Join(", ", claim.Labels)}");
-                    sb.AppendLine(claim.HasPr ? "   PR 생성됨" : FormatRemainingTime(claim.Remaining));
+                    sb.AppendLine("미선점 이슈");
+                    foreach (var url in data.UnclaimedUrls) sb.AppendLine($" - {url}");
+                }
+
+                if (data.ClaimedMap.Count > 0)
+                {
+                    sb.AppendLine("\n선점된 이슈");
+                    foreach (var (login, claims) in data.ClaimedMap)
+                    {
+                        sb.AppendLine($"{login}");
+                        foreach (var claim in claims)
+                        {
+                            sb.AppendLine($" - {claim.Url}");
+                            if (claim.Labels.Count > 0) sb.AppendLine($"   라벨: {string.Join(", ", claim.Labels)}");
+                            sb.AppendLine(claim.HasPr ? "   PR 생성됨" : FormatRemainingTime(claim.Remaining));
+                        }
+                    }
+                }
+            }
+            else
+            {
+                var claimedIssues = data.ClaimedMap.SelectMany(kv => kv.Value.Select(c => (Login: kv.Key, Claim: c)))
+                                                  .OrderBy(x => x.Claim.Number).ToList();
+
+                if (claimedIssues.Count > 0)
+                {
+                    sb.AppendLine("선점된 이슈");
+                    foreach (var (login, claim) in claimedIssues)
+                    {
+                        sb.AppendLine($" #{claim.Number} {claim.Url}");
+                        sb.AppendLine($"   선점자: {login}");
+                        if (claim.Labels.Count > 0) sb.AppendLine($"   라벨: {string.Join(", ", claim.Labels)}");
+                        sb.AppendLine(claim.HasPr ? "   PR 생성됨" : FormatRemainingTime(claim.Remaining));
+                    }
+                }
+
+                if (data.UnclaimedUrls.Count > 0)
+                {
+                    sb.AppendLine("\n미선점 이슈");
+                    foreach (var url in data.UnclaimedUrls) sb.AppendLine($" - {url}");
                 }
             }
 
@@ -87,7 +116,7 @@ namespace RepoScore.Data
 
         public static string FormatRemainingTime(TimeSpan remaining)
         {
-            if (remaining <= TimeSpan.Zero) return "    기한 초과";
+            if (remaining <= TimeSpan.Zero) return "   기한 초과";
             return $"   남은 시간: {(int)remaining.TotalHours:D2}:{remaining.Minutes:D2}:{remaining.Seconds:D2}";
         }
 

@@ -50,12 +50,12 @@ CoconaApp.Run((
         string ownerName = parts[0];
         string repoName = parts[1];
 
-string repoOutput = repos.Length > 1
-    ? Path.Combine(output, $"{ownerName}_{repoName}")
-    : output;
-if (!Directory.Exists(repoOutput)) Directory.CreateDirectory(repoOutput);
-string cachePath = Path.Combine(repoOutput, "cache.json");
-var cache = CacheManager.LoadCache(cachePath, repo, noCache);
+        string repoOutput = repos.Length > 1
+            ? Path.Combine(output, $"{ownerName}_{repoName}")
+            : output;
+        if (!Directory.Exists(repoOutput)) Directory.CreateDirectory(repoOutput);
+        string cachePath = Path.Combine(repoOutput, "cache.json");
+        var cache = CacheManager.LoadCache(cachePath, repo, noCache);
 
         var service = new GitHubService(ownerName, repoName, token, parsedKeywords);
 
@@ -175,6 +175,7 @@ var cache = CacheManager.LoadCache(cachePath, repo, noCache);
     }
 });
 
+// Spectre.Console을 사용하여 터미널에 직접 출력하는 함수
 static void PrintSpectreTable(string repo, List<(string Id, int docIssues, int featBugIssues, int typoPrs, int docPrs, int featBugPrs, int Score)> reportData)
 {
     var table = new Table();

@@ -342,14 +342,14 @@ namespace RepoScore.Services
             }
         }
 
-        private static bool IsDocumentTask(List<GitHubIssuePrLabel> issueLabels)
+        internal static bool IsDocumentTask(List<GitHubIssuePrLabel> issueLabels)
         {
             return issueLabels.Contains(GitHubIssuePrLabel.Documentation) || issueLabels.Contains(GitHubIssuePrLabel.Typo);
         }
 
         // GitHub 라벨 이름 문자열을 GitHubIssuePrLabel 열거형 값으로 변환.
         // 대소문자 및 공백/하이픈을 정규화한 뒤 매핑. 알 수 없는 라벨은 None 반환.
-        private static GitHubIssuePrLabel ParseGitHubLabel(string labelName)
+        internal static GitHubIssuePrLabel ParseGitHubLabel(string labelName)
         {
             if (string.IsNullOrEmpty(labelName)) return GitHubIssuePrLabel.None;
 
@@ -381,7 +381,7 @@ namespace RepoScore.Services
         }
 
         // GraphQL 응답의 이슈 노드에서 닫힌 사유(stateReason)를 파싱하여 열거형으로 반환.
-        private static IssueClosedStateReason ParseIssueClosedStateReason(JsonElement issueNode)
+        internal static IssueClosedStateReason ParseIssueClosedStateReason(JsonElement issueNode)
         {
             if (!issueNode.TryGetProperty("stateReason", out var stateReasonElement) ||
                 stateReasonElement.ValueKind == JsonValueKind.Null)

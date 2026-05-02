@@ -238,12 +238,14 @@ dotnet new mstest -n RepoScore.Tests
 dotnet add RepoScore.Tests/RepoScore.Tests.csproj reference reposcore-cs.csproj
 ```
 
+현재 디렉토리에 `.csproj` 파일이 하나만 있는 경우에는 다음 명령어로 테스트를 실행할 수 있습니다.
 테스트 실행:
 
 ```bash
 dotnet test
 ```
 
+단, 현재 디렉토리에 여러 .csproj 파일이 존재하는 경우에는 실행할 테스트 프로젝트를 명시해야 합니다.
 특정 테스트 프로젝트만 실행:
 
 ```bash
@@ -372,7 +374,42 @@ dotnet test RepoScore.Tests/RepoScore.Tests.csproj
 
 ---
 
-### 7.6 정리
+### 7.6 현재 프로젝트 테스트 실행 방법
+
+현재 프로젝트는 `RepoScore.Tests` 테스트 프로젝트를 통해 주요 로직을 검증합니다.
+
+테스트 대상은 다음과 같습니다.
+
+- `Data/ScoreCalculator.cs`: 점수 계산 로직
+- `Data/CacheManager.cs`: 캐시 저장, 불러오기, 키워드 비교 로직
+- `Services/GitHubService.cs`: 라벨 파싱, 문서 작업 판별, 이슈 종료 사유 파싱 로직
+
+현재 저장소에는 루트 기준으로 다음 프로젝트가 존재합니다.
+- `./reposcore-cs.csproj`: 메인 프로젝트
+- `./RepoScore.Tests/RepoScore.Tests.csproj`: 테스트 프로젝트
+
+따라서 루트 디렉토리에서 테스트를 실행할 때는 테스트 프로젝트 경로를 명시해야 합니다.
+
+```bash
+dotnet test RepoScore.Tests/RepoScore.Tests.csproj
+```
+
+테스트 코드는 GitHub API 호출 없이 실행되도록 구성합니다.
+GitHub 토큰이나 네트워크 연결이 필요한 기능은 단위 테스트 대상에서 제외하고, 외부 의존성이 없는 데이터 처리 로직을 우선 검증합니다.
+
+`dotnet test RepoScore.Tests/RepoScore.Tests.csproj`명령어를 실행한 테스트 결과는 다음과 같이 나올 수 있습니다.
+```bash
+Test summary: total: 36, failed: 0, succeeded: 36, skipped: 0, duration: 2.4s
+```
+해당 결과는 다음을 의미합니다. 
+```text
+테스트 결과 요약 : 총 테스트: 36개, 실패: 0, 성공: 36, 스킵: 0
+```
+해당 결과는 모든 테스트가 정상적으로 통과되었음을 의미하며, 현재 프로젝트의 주요 로직이 의도한 대로 동작함을 검증합니다.
+
+---
+
+### 7.7 정리
 
 기본 흐름은 다음과 같습니다.
 

@@ -147,14 +147,21 @@ CoconaApp.Run((
                     if (!totalUserPullRequests.ContainsKey(user)) totalUserPullRequests[user] = new List<PRRecord>();
 
                     // 저장소별 이슈/PR은 번호가 겹칠 수 있으므로 URL 기준으로 중복 방지
+                    // URL이 비어있는 경우를 대비해 URL이 있으면 URL로, 없으면 Number 기준으로 판별
                     foreach (var issue in cache.UserIssues[user])
                     {
-                        if (!totalUserIssues[user].Any(i => i.Url == issue.Url))
+                        bool isDuplicate = string.IsNullOrEmpty(issue.Url)
+                            ? totalUserIssues[user].Any(i => string.IsNullOrEmpty(i.Url) && i.Number == issue.Number)
+                            : totalUserIssues[user].Any(i => i.Url == issue.Url);
+                        if (!isDuplicate)
                             totalUserIssues[user].Add(issue);
                     }
                     foreach (var pr in cache.UserPullRequests[user])
                     {
-                        if (!totalUserPullRequests[user].Any(p => p.Url == pr.Url))
+                        bool isDuplicate = string.IsNullOrEmpty(pr.Url)
+                            ? totalUserPullRequests[user].Any(p => string.IsNullOrEmpty(p.Url) && p.Number == pr.Number)
+                            : totalUserPullRequests[user].Any(p => p.Url == pr.Url);
+                        if (!isDuplicate)
                             totalUserPullRequests[user].Add(pr);
                     }
                 }

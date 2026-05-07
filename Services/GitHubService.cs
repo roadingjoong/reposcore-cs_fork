@@ -168,13 +168,15 @@ namespace RepoScore.Services
 
             while (hasNextPage)
             {
-                var requestPayload = BuildRawQueryPayload(
-                    rawGraphQl,
-                    new Dictionary<string, object>
+                var requestPayload = JsonSerializer.Serialize(new
+                {
+                    query = rawGraphQl,
+                    variables = new Dictionary<string, object>
                     {
                         ["searchQuery"] = searchString,
                         ["after"] = cursor!
-                    });
+                    }
+                });
 
                 var rawResponse = _graphQLConnection.Run(requestPayload).Result;
                 using var document = JsonDocument.Parse(rawResponse);
@@ -247,6 +249,7 @@ namespace RepoScore.Services
                         {
                             issue.Number,
                             issue.Url,
+
                             Labels = issue.Labels(10, null, null, null, null).Nodes.Select(l => l.Name).ToList(),
                             Comments = issue.Comments(10, null, null, null, null).Nodes.Select(c => new
                             {
@@ -362,15 +365,6 @@ namespace RepoScore.Services
                 "wontfix" => GitHubIssuePrLabel.Wontfix,
                 _ => GitHubIssuePrLabel.None,
             };
-        }
-
-        private static string BuildRawQueryPayload(string query, Dictionary<string, object> variables)
-        {
-            return JsonSerializer.Serialize(new
-            {
-                query,
-                variables
-            });
         }
 
         // GraphQL 응답의 이슈 노드에서 닫힌 사유(stateReason)를 파싱하여 열거형으로 반환.

@@ -4,7 +4,8 @@ on:
   pull_request:
     paths:
       - "docs/**"
-      - "tools/update-readme.py"
+      - "tools/update-doclist.py"
+      - "tools/j2render.py"
       - "Makefile"
 
 jobs:
@@ -19,6 +20,9 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.x'
+
+      - name: Install jinja2
+        run: pip install jinja2
 
       - name: Run docs README generation
         env:

@@ -305,7 +305,7 @@ public class CliExecutionTests
     [InlineData("--format=txt --claims=Issue")]
     public async Task Cli_Should_Run_Without_Error(string options)
     {
-        var repo = "oss2025hnu/reposcore-cs";
+        var repo = "oss2026hnu/reposcore-cs";
 
         var process = new Process
         {

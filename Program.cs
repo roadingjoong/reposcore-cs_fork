@@ -22,12 +22,7 @@ CoconaApp.Run((
 [Option(Description = "이슈 선점 키워드 (쉼표 구분, 미입력시 기본값 사용)")] string? keywords = null,
 [Option(Description = "캐시를 무시하고 전체 데이터를 다시 수집할지 여부")] bool noCache = false
 ) =>
-{
-    void PrintHelp()
-    {
-    Console.Error.WriteLine("도움말을 보려면 --help 옵션을 사용하세요.");
-    }
-    
+{   
     var formatErrors = new List<string>();
     foreach (var repo in repos)
     {
@@ -41,7 +36,7 @@ CoconaApp.Run((
         foreach (var error in formatErrors)
             Console.Error.WriteLine(error);
         Console.Error.WriteLine();
-        PrintHelp();
+        Console.Error.WriteLine("도움말을 보려면 --help 옵션을 사용하세요.");
         throw new CommandExitedException(1);
     }
 
@@ -50,7 +45,7 @@ CoconaApp.Run((
     {
         Console.Error.WriteLine("오류: GitHub 토큰이 필요합니다.");
         Console.Error.WriteLine();
-        PrintHelp();
+        Console.Error.WriteLine("도움말을 보려면 --help 옵션을 사용하세요.");
         throw new CommandExitedException(1);
     }
 

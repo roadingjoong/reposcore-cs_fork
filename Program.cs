@@ -16,13 +16,13 @@ CultureInfo.DefaultThreadCurrentUICulture = new CultureInfo("en-US");
 
 await CoconaApp.RunAsync(async (
 [Argument(Description = "대상 저장소 목록 (예: owner/repo1 owner/repo2)")] string[] repos,
-[Option('t', Description = "GitHub Token (미입력시 GITHUB_TOKEN 사용)", ValueName = "TOKEN")] string? token = null,
+[Option('t', Description = "GitHub Token (미입력시 GITHUB_TOKEN 사용)")] string? token = null,
 [Option(Description = "최근 이슈 선점 현황 조회")] ClaimsMode? claims = null,
 [Option('f', Description = "출력 형식")] OutputFormat format = OutputFormat.Csv,
-[Option('o', Description = "출력 디렉토리 경로", ValueName = "DIR")] string output = "./results",
+[Option('o', Description = "출력 디렉토리 경로")] string output = "./results",
 [Option(Description = "정렬 기준")] SortBy sortBy = SortBy.Score,
 [Option(Description = "정렬 방법")] SortOrder sortOrder = SortOrder.Desc,
-[Option(Description = "이슈 선점 키워드 (쉼표 구분, 미입력시 기본값 사용)", ValueName = "KEYWORDS")] string? keywords = null,
+[Option(Description = "이슈 선점 키워드 (쉼표 구분, 미입력시 기본값 사용)")] string? keywords = null,
 [Option(Description = "캐시를 무시하고 전체 데이터를 다시 수집할지 여부")] bool noCache = false,
 [Option(Description = "로그 상세 수준 (0=기본, 1=진행 정보, 2=디버그, 3=상세 디버그)")] int verbose = 0
 ) =>
@@ -52,18 +52,16 @@ await CoconaApp.RunAsync(async (
     if (formatErrors.Count > 0)
     {
         foreach (var error in formatErrors)
-            Console.Error.WriteLine(error);
-        Console.Error.WriteLine();
-        Console.Error.WriteLine("도움말을 보려면 --help 옵션을 사용하세요.");
+            Log.Error("{Error}", error);
+        Log.Error("도움말을 보려면 --help 옵션을 사용하세요.");
         throw new CommandExitedException(1);
     }
 
     token ??= Environment.GetEnvironmentVariable("GITHUB_TOKEN");
     if (string.IsNullOrEmpty(token))
     {
-        Console.Error.WriteLine("오류: GitHub 토큰이 필요합니다.");
-        Console.Error.WriteLine();
-        Console.Error.WriteLine("도움말을 보려면 --help 옵션을 사용하세요.");
+        Log.Error("오류: GitHub 토큰이 필요합니다.");
+        Log.Error("도움말을 보려면 --help 옵션을 사용하세요.");
         throw new CommandExitedException(1);
     }
 
@@ -132,7 +130,7 @@ await CoconaApp.RunAsync(async (
 
                 if (!CacheManager.HasSameKeywords(cache, parsedKeywords))
                 {
-                    Console.Error.WriteLine($"[{repo}] 키워드 옵션이 이전 실행과 달라 캐시를 무효화합니다.");
+                    Log.Information("[{Repo}] 키워드 옵션이 이전 실행과 달라 캐시를 무효화합니다.", repo);
 
                     cache = new RepoCache
                     {
@@ -168,7 +166,7 @@ await CoconaApp.RunAsync(async (
 
                 if (contributors.Count == 0)
                 {
-                    Console.Error.WriteLine($"[{repo}] 조회된 기여자가 없습니다.");
+                    Log.Warning("[{Repo}] 조회된 기여자가 없습니다.", repo);
                     return;
                 }
 
@@ -238,7 +236,7 @@ await CoconaApp.RunAsync(async (
                     string txtPath = Path.Combine(repoOutput, "results.txt");
                     string txtContent = ReportFormatter.BuildTextReport(repo, reportData);
                     File.WriteAllText(txtPath, txtContent, Encoding.UTF8);
-                    Console.Error.WriteLine($"[{repo}] 가독성 리포트(TXT) 추가 저장 완료: {txtPath}");
+                    Log.Information("[{Repo}] 가독성 리포트(TXT) 추가 저장 완료: {TxtPath}", repo, txtPath);
                 }
 
                 if (format == OutputFormat.Html)
@@ -246,7 +244,7 @@ await CoconaApp.RunAsync(async (
                     string htmlPath = Path.Combine(repoOutput, "results.html");
                     string htmlContent = ReportFormatter.BuildHtmlReport(repo, reportData);
                     File.WriteAllText(htmlPath, htmlContent, Encoding.UTF8);
-                    Console.Error.WriteLine($"[{repo}] HTML 리포트 추가 저장 완료: {htmlPath}");
+                    Log.Information("[{Repo}] HTML 리포트 추가 저장 완료: {HtmlPath}", repo, htmlPath);
                 }
 
                 if (repos.Length > 1)
@@ -259,11 +257,11 @@ await CoconaApp.RunAsync(async (
                 if (ex.Message.Contains("Could not resolve to a Repository") ||
                     (ex.InnerException?.Message.Contains("Could not resolve to a Repository") == true))
                 {
-                    Console.Error.WriteLine($"오류: '{repo}' 저장소가 존재하지 않거나 접근할 수 없습니다.");
+                    Log.Error("오류: '{Repo}' 저장소가 존재하지 않거나 접근할 수 없습니다.", repo);
                     Environment.Exit(1);
                     return;
                 }
-                AnsiConsole.WriteException(ex);
+                Log.Error(ex, "처리 중 예외가 발생했습니다.");
             }
         }
         finally
@@ -344,7 +342,7 @@ await CoconaApp.RunAsync(async (
 
             string totalCsvPath = Path.Combine(totalOutput, "results.csv");
             File.WriteAllText(totalCsvPath, totalCsv.ToString(), Encoding.UTF8);
-            Console.Error.WriteLine($"전체 합산 데이터(CSV) 저장 완료: {totalCsvPath}");
+            Log.Information("전체 합산 데이터(CSV) 저장 완료: {TotalCsvPath}", totalCsvPath);
 
             if (format == OutputFormat.Txt)
             {
@@ -352,7 +350,7 @@ await CoconaApp.RunAsync(async (
                 string totalTxtPath = Path.Combine(totalOutput, "results.txt");
                 string totalTxtContent = ReportFormatter.BuildTextReport(totalLabel, totalReportData);
                 File.WriteAllText(totalTxtPath, totalTxtContent, Encoding.UTF8);
-                Console.Error.WriteLine($"전체 합산 리포트(TXT) 저장 완료: {totalTxtPath}");
+                Log.Information("전체 합산 리포트(TXT) 저장 완료: {TotalTxtPath}", totalTxtPath);
             }
 
             if (format == OutputFormat.Html)
@@ -361,12 +359,12 @@ await CoconaApp.RunAsync(async (
                 string totalHtmlPath = Path.Combine(totalOutput, "results.html");
                 string totalHtmlContent = ReportFormatter.BuildHtmlReport(totalLabel, totalReportData);
                 File.WriteAllText(totalHtmlPath, totalHtmlContent, Encoding.UTF8);
-                Console.Error.WriteLine($"전체 합산 HTML 리포트 저장 완료: {totalHtmlPath}");
+                Log.Information("전체 합산 HTML 리포트 저장 완료: {TotalHtmlPath}", totalHtmlPath);
             }
         }
         catch (Exception ex)
         {
-            AnsiConsole.WriteException(ex);
+            Log.Error(ex, "처리 중 예외가 발생했습니다.");
         }
     }
 });

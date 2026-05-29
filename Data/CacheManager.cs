@@ -4,6 +4,7 @@ using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using RepoScore.Services;
+using Serilog;
 
 namespace RepoScore.Data
 {
@@ -78,7 +79,7 @@ namespace RepoScore.Data
         {
             if (noCache)
             {
-                Console.Error.WriteLine("ℹ️  캐시를 무시하고 전체 데이터를 다시 수집합니다.");
+                Log.Information("캐시를 무시하고 전체 데이터를 다시 수집합니다.");
                 return new RepoCache { Repository = repoName };
             }
 
@@ -100,7 +101,7 @@ namespace RepoScore.Data
             }
             catch
             {
-                Console.Error.WriteLine("⚠️ 기존 캐시 파일이 손상되어 새로 수집을 시작합니다.");
+                Log.Warning("기존 캐시 파일이 손상되어 새로 수집을 시작합니다.");
                 return new RepoCache { Repository = repoName };
             }
         }

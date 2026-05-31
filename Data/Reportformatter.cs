@@ -50,7 +50,7 @@ namespace RepoScore.Data
                 Out = new AnsiConsoleOutput(sw),
                 Ansi = AnsiSupport.No
             });
-            
+
             // 텍스트 출력 시 콘솔 기본 80자 제한으로 인한 강제 줄바꿈 및 레이아웃 깨짐 방지
             anConsole.Profile.Width = 1024;
 

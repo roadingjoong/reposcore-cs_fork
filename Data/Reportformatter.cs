@@ -164,6 +164,7 @@ namespace RepoScore.Data
     <meta name=""viewport"" content=""width=device-width, initial-scale=1.0"">
     <title>RepoScore Report - {repoName}</title>
     <script src=""https://cdn.jsdelivr.net/npm/chart.js""></script>
+    <script src=""https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0""></script>
     <style>
         body {{ font-family: -apple-system, BlinkMacSystemFont, ""Segoe UI"", Helvetica, Arial, sans-serif, ""Apple Color Emoji"", ""Segoe UI Emoji""; margin: 2em; background-color: #f6f8fa; color: #24292e; }}
         h1 {{ border-bottom: 1px solid #e1e4e8; padding-bottom: 0.3em; }}
@@ -176,6 +177,7 @@ namespace RepoScore.Data
         <canvas id=""contributionChart""></canvas>
     </div>
     <script>
+        Chart.register(ChartDataLabels);
         const ctx = document.getElementById('contributionChart');
         new Chart(ctx, {{
             type: 'bar',
@@ -193,10 +195,28 @@ namespace RepoScore.Data
                 indexAxis: 'y',
                 responsive: true,
                 maintainAspectRatio: false,
-                scales: {{ x: {{ stacked: true }}, y: {{ stacked: true }} }},
+                scales: {{ 
+                    x: {{ 
+                        stacked: true,
+                        title: {{
+                            display: true,
+                            text: '기여 건수 (개)'
+                        }}
+                    }}, 
+                    y: {{ stacked: true }} 
+                }},
                 plugins: {{
-                    title: {{ display: true, text: '사용자별 기여 항목 분포' }},
-                    legend: {{ position: 'top' }}
+                    title: {{ display: true, text: '사용자별 기여 항목 분포 (그래프 내 기여 건수 표시)' }},
+                    legend: {{ position: 'top' }},
+                    datalabels: {{
+                        color: '#333',
+                        textStrokeColor: '#fff',
+                        textStrokeWidth: 2,
+                        font: {{ weight: 'bold' }},
+                        formatter: function(value) {{
+                            return value > 0 ? value : '';
+                        }}
+                    }}
                 }}
             }}
         }});

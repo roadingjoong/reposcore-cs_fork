@@ -79,7 +79,7 @@ await CoconaApp.RunAsync(async (
     string[]? parsedKeywords = keywords != null
         ? keywords.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
         : null;
-        
+
     // 저장소별 (issues, prs) 결과를 담을 딕셔너리 — 병렬 처리 후 합산에 사용
     var repoResults = new System.Collections.Concurrent.ConcurrentDictionary<string, (Dictionary<string, List<IssueRecord>> UserIssues, Dictionary<string, List<PRRecord>> UserPrs)>();
 

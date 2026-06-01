@@ -27,18 +27,7 @@ await CoconaApp.RunAsync(async (
 [Option(Description = "로그 상세 수준 (-1=경고/에러만, 0=기본/진행 정보, 1=디버그, 2=상세 디버그)")] int verbose = 0
 ) =>
 {
-    // 입력받은 문자열을 쉼표로 분리하여 OutputFormat 열거형으로 변환 (대소문자 무시, 중복 제거)
-    var activeFormats = new HashSet<OutputFormat>();
-    foreach (var f in format.Split(','))
-    {
-        if (Enum.TryParse<OutputFormat>(f.Trim(), true, out var parsedFormat))
-        {
-            activeFormats.Add(parsedFormat);
-        }
-    }
-    if (activeFormats.Count == 0) activeFormats.Add(OutputFormat.Csv);
-
-    var minimumLevel = verbose switch
+    var minimumLevel = verbose switch // 로거 설정을 먼저 수행
     {
         < 0 => LogEventLevel.Warning,
         0 => LogEventLevel.Information,
@@ -52,6 +41,38 @@ await CoconaApp.RunAsync(async (
             standardErrorFromLevel: LogEventLevel.Verbose,
             outputTemplate: "[{Level:u3}] {Message:lj}{NewLine}{Exception}")
         .CreateLogger();
+
+    // --format 옵션 파싱 및 유효성 검사
+    var activeFormats = new HashSet<OutputFormat>();
+    var invalidFormats = new List<string>();
+    var allowedFormats = Enum.GetNames<OutputFormat>().Select(e => e.ToLowerInvariant());
+
+    foreach (var f in format.Split(',', StringSplitOptions.RemoveEmptyEntries))
+    {
+        var trimmedFormat = f.Trim();
+        if (string.IsNullOrEmpty(trimmedFormat)) continue;
+
+        if (Enum.TryParse<OutputFormat>(trimmedFormat, true, out var parsedFormat))
+        {
+            activeFormats.Add(parsedFormat);
+        }
+        else
+        {
+            invalidFormats.Add(trimmedFormat);
+        }
+    }
+
+    if (invalidFormats.Any())
+    {
+        foreach (var invalid in invalidFormats)
+            Log.Error("오류: '{Format}'은(는) 유효하지 않은 출력 형식입니다. 허용값: {Allowed}", invalid, string.Join(", ", allowedFormats));
+        Log.Error("도움말을 보려면 --help 옵션을 사용하세요.");
+        throw new CommandExitedException(1);
+    }
+
+    // 유효한 형식이 하나도 없으면 기본값(Csv) 사용
+    if (activeFormats.Count == 0) activeFormats.Add(OutputFormat.Csv);
+
     var formatErrors = new List<string>();
     foreach (var repo in repos)
     {

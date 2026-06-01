@@ -1,6 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
@@ -279,7 +276,7 @@ namespace RepoScore.Services
         }
 
         /// <summary>
-        /// 저장소의 전체 이슈 목록을 GraphQL로 비동기 조회합니다. 
+        /// 저장소의 전체 이슈 목록을 GraphQL로 비동기 조회합니다.
         /// 단, "not planned" 및 "duplicate" 사유로 거절/닫힌 이슈는 수집 대상에서 자동으로 제외됩니다.
         /// </summary>
         /// <param name="since">지정된 경우, 해당 일시 이후에 최종 업데이트된 이슈 데이터만 필터링하여 수집합니다.</param>

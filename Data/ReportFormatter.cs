@@ -1,7 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using System.Text;
 using RepoScore.Services;
 using System.Text.Json;
@@ -186,15 +182,15 @@ namespace RepoScore.Data
                 indexAxis: 'y',
                 responsive: true,
                 maintainAspectRatio: false,
-                scales: {{ 
-                    x: {{ 
+                scales: {{
+                    x: {{
                         stacked: true,
                         title: {{
                             display: true,
                             text: '기여 건수 (개)'
                         }}
-                    }}, 
-                    y: {{ stacked: true }} 
+                    }},
+                    y: {{ stacked: true }}
                 }},
                 plugins: {{
                     title: {{ display: true, text: '사용자별 기여 항목 분포 (그래프 내 기여 건수 표시)' }},

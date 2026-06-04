@@ -36,7 +36,7 @@ await CoconaApp.RunAsync(async (
             standardErrorFromLevel: LogEventLevel.Verbose,
             outputTemplate: "[{Level:u3}] {Message:lj}{NewLine}{Exception}")
         .CreateLogger();
-
+    
     // --format 옵션 파싱 및 유효성 검사
     var activeFormats = new HashSet<OutputFormat>();
     var invalidFormats = new List<string>();
@@ -57,7 +57,6 @@ await CoconaApp.RunAsync(async (
         }
     }
 
-
     if (invalidFormats.Any())
     {
         foreach (var invalid in invalidFormats)
@@ -66,7 +65,6 @@ await CoconaApp.RunAsync(async (
         throw new CommandExitedException(1);
     }
 
-    // 유효한 형식이 하나도 없으면 기본값(Csv) 사용
     if (activeFormats.Count == 0) activeFormats.Add(OutputFormat.Csv);
 
     var formatErrors = new List<string>();
@@ -97,13 +95,9 @@ await CoconaApp.RunAsync(async (
         ? keywords.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
         : null;
 
-    // 저장소별 (issues, prs) 결과를 담을 딕셔너리 — 병렬 처리 후 합산에 사용
     var repoResults = new System.Collections.Concurrent.ConcurrentDictionary<string, (Dictionary<string, List<IssueRecord>> UserIssues, Dictionary<string, List<PRRecord>> UserPrs)>();
-
-    // 저장소 처리 중 발생한 예외를 저장 — Task.WhenAll 후 종료 코드 결정에 사용
     var repoFailures = new System.Collections.Concurrent.ConcurrentBag<string>();
 
-    // 다중 저장소를 병렬로 처리 (동시 실행 상한: 8)
     using var semaphore = new System.Threading.SemaphoreSlim(8);
 
     var repoTasks = repos.Select(async repo =>
@@ -178,7 +172,6 @@ await CoconaApp.RunAsync(async (
                 else
                     Log.Information("[{Repo}] 기존 캐시 없음: 전체 데이터를 수집합니다.", repo);
 
-                // PR과 이슈를 병렬로 조회
                 var prsTask = service.GetPullRequestsAsync(since);
                 var issuesTask = service.GetIssuesAsync(since);
                 await Task.WhenAll(prsTask, issuesTask);
@@ -201,8 +194,6 @@ await CoconaApp.RunAsync(async (
                 }
 
                 var reportData = new List<(string Id, int docIssues, int featBugIssues, int typoPrs, int docPrs, int featBugPrs, int Score)>();
-
-                // 저장소별 집계용 (합산에 사용)
                 var repoUserIssues = new Dictionary<string, List<IssueRecord>>();
                 var repoUserPrs = new Dictionary<string, List<PRRecord>>();
 
@@ -283,7 +274,6 @@ await CoconaApp.RunAsync(async (
 
     await Task.WhenAll(repoTasks);
 
-    // 하나 이상의 저장소 처리가 실패한 경우 합산 리포트는 진행하되 마지막에 비 0 종료
     bool hasRepoFailure = !repoFailures.IsEmpty;
 
     if (repos.Length > 1 && repoResults.Count > 0)
@@ -297,9 +287,8 @@ await CoconaApp.RunAsync(async (
 
             foreach (var (_, (userIssues, userPrs)) in repoResults)
             {
-                // ── 제네릭 함수를 활용한 병합 로직 단일화 ──
-                MergeUserRecords(totalUserIssues, userIssues, i => i.Url, i => i.Number);
-                MergeUserRecords(totalUserPullRequests, userPrs, p => p.Url, p => p.Number);
+                MergeUserRecords(totalUserIssues, userIssues);
+                MergeUserRecords(totalUserPullRequests, userPrs);
             }
 
             var totalReportData = new List<(string Id, int docIssues, int featBugIssues, int typoPrs, int docPrs, int featBugPrs, int Score)>();
@@ -323,7 +312,6 @@ await CoconaApp.RunAsync(async (
 
             totalReportData = ReportSorter.SortReportData(totalReportData, sortBy, sortOrder);
 
-            // ── 전체 합산 리포트 출력 ──
             string totalLabel = string.Join(" + ", repos);
             ExportReports(totalLabel, totalReportData, activeFormats, output);
         }
@@ -334,7 +322,6 @@ await CoconaApp.RunAsync(async (
         }
     }
 
-    // 개별 저장소 처리 실패가 있었던 경우 비 0 종료
     if (hasRepoFailure)
     {
         var failedRepos = string.Join(", ", repoFailures);
@@ -343,8 +330,10 @@ await CoconaApp.RunAsync(async (
     }
 });
 
-// CSV, TXT, HTML 서식에 맞춰 리포트 파일을 물리 디렉토리에 내보내는 공통 메서드
 
+/// <summary>
+/// CSV, TXT, HTML 서식에 맞춰 리포트 파일을 물리 디렉토리에 내보내는 공통 메서드
+/// </summary>
 static void ExportReports(
     string label,
     List<(string Id, int docIssues, int featBugIssues, int typoPrs, int docPrs, int featBugPrs, int Score)> reportData,
@@ -382,12 +371,9 @@ static void ExportReports(
     }
 }
 
-// 제네릭(Generic)과 람다 선택자를 이용해 이슈와 PR 구분 없이 URL/Number 기반 중복을 제거하며 데이터를 합산하는 메서드
 static void MergeUserRecords<T>(
     Dictionary<string, List<T>> target,
-    Dictionary<string, List<T>> source,
-    Func<T, string?> urlSelector,
-    Func<T, int> numberSelector)
+    Dictionary<string, List<T>> source)
 {
     foreach (var (user, items) in source)
     {
@@ -399,13 +385,20 @@ static void MergeUserRecords<T>(
 
         foreach (var item in items)
         {
-            string? url = urlSelector(item);
-            int number = numberSelector(item);
+            bool isDuplicate = false;
 
-            // URL이 없으면 Number로 비교, URL이 있으면 URL 문자열 자체로 중복 검사
-            bool isDuplicate = string.IsNullOrEmpty(url)
-                ? targetList.Any(t => string.IsNullOrEmpty(urlSelector(t)) && numberSelector(t) == number)
-                : targetList.Any(t => urlSelector(t) == url);
+            if (item is IssueRecord issue)
+            {
+                isDuplicate = string.IsNullOrEmpty(issue.Url)
+                    ? targetList.Any(t => t is IssueRecord i && string.IsNullOrEmpty(i.Url) && i.Number == issue.Number)
+                    : targetList.Any(t => t is IssueRecord i && i.Url == issue.Url);
+            }
+            else if (item is PRRecord pr)
+            {
+                isDuplicate = string.IsNullOrEmpty(pr.Url)
+                    ? targetList.Any(t => t is PRRecord p && string.IsNullOrEmpty(p.Url) && p.Number == pr.Number)
+                    : targetList.Any(t => t is PRRecord p && p.Url == pr.Url);
+            }
 
             if (!isDuplicate)
             {
